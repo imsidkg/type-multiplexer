@@ -5,8 +5,10 @@ export class FrameSockets {
   static STREAM_ID = 1;
   buffer = Buffer.alloc(0);
 
-  incomingBuffer = async(chunk: Buffer): Promise<Buffer[]> => {
-    const frame: Buffer[] = [];
+  incomingBuffer =  (
+    chunk: Buffer
+  ): Array<{ streamId: number; payload: Buffer }> => {
+    const frame: Array<{ streamId: number; payload: Buffer }> = [];
     this.buffer = Buffer.concat([this.buffer, chunk]);
     while (this.buffer.length >= 5) {
       const length = this.buffer.readInt32BE(0);
@@ -17,9 +19,18 @@ export class FrameSockets {
       const streamId = this.buffer.readUInt8(4);
       const payload = this.buffer.subarray(5, frameLength);
 
-      frame.push(payload);
+      frame.push({ streamId, payload });
       this.buffer = this.buffer.subarray(frameLength);
     }
     return frame;
+  };
+
+  static createFrame = (streamId: number, payload: Buffer) => {
+    const lenBuf = Buffer.alloc(4);
+    lenBuf.writeInt32BE(payload.length);
+
+    const idBuf = Buffer.from([streamId]);
+
+    return Buffer.concat([lenBuf, idBuf, payload]);
   };
 }
